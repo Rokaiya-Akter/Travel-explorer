@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Voya — Travel & Places Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+:root{
+  --cream:#faf6ef;
+  --warm:#f0e8d8;
+  --paper:#fff8f0;
+  --ink:#1a1208;
+  --rust:#c4532a;
+  --gold:#c8962a;
+  --sage:#4a6741;
+  --muted:#8a7a65;
+  --border:#e0d5c0;
+  --shadow: 0 4px 40px rgba(26,18,8,0.10);
+}
+
+html,body{min-height:100%;background:var(--cream);color:var(--ink);font-family:'Jost',sans-serif;}
+
+/* Grain overlay */
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity:0.35;
+}
+
+.app{max-width:1200px;margin:0 auto;padding:0 24px 80px;}
+
+/* ── Masthead ── */
+.masthead{
+  border-bottom:2px solid var(--ink);
+  padding:32px 0 20px;
+  margin-bottom:48px;
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+  flex-wrap:wrap;
+}
+.masthead-left{}
+.issue-line{
+  font-family:'Jost',sans-serif;
+  font-size:0.68rem;
+  letter-spacing:0.2em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:6px;
+}
+.logo{
+  font-family:'Playfair Display',serif;
+  font-size:3.5rem;
+  font-weight:900;
+  line-height:1;
+  color:var(--ink);
+  letter-spacing:-0.02em;
+}
+.logo span{color:var(--rust);font-style:italic;}
+.tagline{
+  font-size:0.8rem;
+  letter-spacing:0.15em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-top:6px;
+}
+
+/* ── Search ── */
+.search-section{margin-bottom:48px;}
+.search-row{display:flex;gap:0;}
+.search-field{
+  flex:1;
+  background:var(--paper);
+  border:2px solid var(--ink);
+  border-right:none;
+  padding:14px 20px;
+  font-family:'Playfair Display',serif;
+  font-size:1.05rem;
+  color:var(--ink);
+  outline:none;
+  transition:background 0.2s;
+}
+.search-field::placeholder{color:var(--muted);font-style:italic;}
+.search-field:focus{background:#fff;}
+.search-btn{
+  background:var(--ink);
+  border:2px solid var(--ink);
+  color:var(--cream);
+  padding:14px 32px;
+  font-family:'Jost',sans-serif;
+  font-size:0.85rem;
+  font-weight:600;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  cursor:pointer;
+  transition:background 0.2s,color 0.2s;
+  white-space:nowrap;
+}
+.search-btn:hover{background:var(--rust);border-color:var(--rust);}
+
+.autocomplete-wrap{position:relative;}
+.autocomplete-drop{
+  position:absolute;top:100%;left:0;right:0;
+  background:var(--paper);
+  border:2px solid var(--ink);
+  border-top:none;
+  z-index:100;
+  display:none;
+}
+.autocomplete-drop.open{display:block;}
+.auto-item{
+  padding:12px 20px;
+  cursor:pointer;
+  border-bottom:1px solid var(--border);
+  font-size:0.9rem;
+  transition:background 0.15s;
+}
+.auto-item:last-child{border-bottom:none;}
+.auto-item:hover{background:var(--warm);}
+.auto-item .sub{font-size:0.75rem;color:var(--muted);margin-top:2px;}
+
+/* ── Tabs ── */
+.tabs{
+  display:flex;
+  gap:0;
+  border-bottom:2px solid var(--ink);
+  margin-bottom:36px;
+}
+.tab{
+  padding:10px 28px;
+  font-family:'Jost',sans-serif;
+  font-size:0.8rem;
+  font-weight:600;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  cursor:pointer;
+  border-bottom:3px solid transparent;
+  margin-bottom:-2px;
+  color:var(--muted);
+  transition:color 0.2s;
+}
+.tab.active{color:var(--ink);border-bottom-color:var(--rust);}
+.tab:hover:not(.active){color:var(--ink);}
+
+/* ── Panels ── */
+.panel{display:none;}
+.panel.active{display:block;animation:fadeIn 0.4s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+
+/* ── Country Card (hero layout) ── */
+.country-hero{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:0;
+  border:2px solid var(--ink);
+  margin-bottom:36px;
+  overflow:hidden;
+  box-shadow:var(--shadow);
+}
+.country-hero-img{
+  position:relative;
+  min-height:320px;
+  background:var(--warm);
+  overflow:hidden;
+}
+.country-hero-img img{
+  width:100%;height:100%;
+  object-fit:cover;
+  display:block;
+  transition:transform 0.6s ease;
+}
+.country-hero-img:hover img{transform:scale(1.04);}
+.flag-badge{
+  position:absolute;top:20px;left:20px;
+  font-size:3rem;
+  background:rgba(255,255,255,0.9);
+  padding:6px 10px;
+  border-radius:4px;
+  box-shadow:0 2px 12px rgba(0,0,0,0.15);
+}
+.country-hero-info{
+  padding:36px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  background:var(--paper);
+}
+.country-region-label{
+  font-size:0.68rem;
+  letter-spacing:0.2em;
+  text-transform:uppercase;
+  color:var(--rust);
+  font-weight:600;
+  margin-bottom:8px;
+}
+.country-name{
+  font-family:'Playfair Display',serif;
+  font-size:2.6rem;
+  font-weight:900;
+  line-height:1.05;
+  margin-bottom:6px;
+}
+.country-native{
+  font-family:'Playfair Display',serif;
+  font-style:italic;
+  color:var(--muted);
+  font-size:1rem;
+  margin-bottom:20px;
+}
+.country-desc{
+  font-size:0.9rem;
+  line-height:1.7;
+  color:var(--muted);
+  flex:1;
+  margin-bottom:24px;
+}
+.facts-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+.fact{border-left:3px solid var(--gold);padding-left:10px;}
+.fact-label{font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;}
+.fact-val{font-size:0.95rem;font-weight:600;}
+
+/* ── Stats strip ── */
+.stats-strip{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  border:2px solid var(--ink);
+  margin-bottom:36px;
+}
+.stat-block{
+  padding:20px 24px;
+  border-right:2px solid var(--ink);
+  text-align:center;
+}
+.stat-block:last-child{border-right:none;}
+.stat-num{
+  font-family:'Playfair Display',serif;
+  font-size:1.8rem;
+  font-weight:700;
+  color:var(--rust);
+  line-height:1;
+  margin-bottom:4px;
+}
+.stat-lbl{font-size:0.68rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);}
+
+/* ── Photo grid ── */
+.section-head{
+  font-family:'Playfair Display',serif;
+  font-size:1.5rem;
+  font-weight:700;
+  border-bottom:1px solid var(--border);
+  padding-bottom:10px;
+  margin-bottom:24px;
+}
+.photo-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;
+  margin-bottom:36px;
+}
+.photo-item{
+  position:relative;
+  overflow:hidden;
+  aspect-ratio:4/3;
+  background:var(--warm);
+  cursor:pointer;
+}
+.photo-item img{
+  width:100%;height:100%;
+  object-fit:cover;
+  display:block;
+  transition:transform 0.5s ease;
+}
+.photo-item:hover img{transform:scale(1.08);}
+.photo-caption{
+  position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(transparent,rgba(26,18,8,0.85));
+  color:#fff;
+  padding:24px 12px 10px;
+  font-size:0.72rem;
+  letter-spacing:0.05em;
+  opacity:0;
+  transition:opacity 0.3s;
+}
+.photo-item:hover .photo-caption{opacity:1;}
+
+/* ── Nearby places ── */
+.places-list{display:flex;flex-direction:column;gap:12px;margin-bottom:36px;}
+.place-row{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  padding:16px 20px;
+  background:var(--paper);
+  border:1px solid var(--border);
+  transition:border-color 0.2s,transform 0.2s;
+  cursor:pointer;
+}
+.place-row:hover{border-color:var(--rust);transform:translateX(4px);}
+.place-num{
+  font-family:'Playfair Display',serif;
+  font-size:1.8rem;
+  font-weight:900;
+  color:var(--border);
+  width:40px;
+  flex-shrink:0;
+  line-height:1;
+}
+.place-info{flex:1;}
+.place-name{font-weight:600;font-size:1rem;margin-bottom:2px;}
+.place-type{font-size:0.75rem;color:var(--muted);letter-spacing:0.05em;}
+.place-dist{
+  font-family:'Playfair Display',serif;
+  font-style:italic;
+  font-size:0.85rem;
+  color:var(--muted);
+  flex-shrink:0;
+}
+
+/* ── Map embed ── */
+.map-wrap{
+  border:2px solid var(--ink);
+  overflow:hidden;
+  margin-bottom:36px;
+}
+.map-wrap iframe{width:100%;height:420px;border:none;display:block;}
+
+/* ── Lightbox ── */
+.lightbox{
+  position:fixed;inset:0;z-index:1000;
+  background:rgba(26,18,8,0.95);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+.lightbox.open{display:flex;}
+.lightbox img{max-width:90vw;max-height:85vh;object-fit:contain;}
+.lightbox-close{
+  position:absolute;top:20px;right:24px;
+  font-size:2rem;color:#fff;cursor:pointer;opacity:0.7;
+  transition:opacity 0.2s;
+}
+.lightbox-close:hover{opacity:1;}
+
+/* ── Empty / Loading ── */
+.empty-state{
+  text-align:center;padding:80px 20px;
+  border:2px dashed var(--border);
+}
+.empty-icon{font-size:3.5rem;margin-bottom:16px;opacity:0.3;}
+.empty-title{
+  font-family:'Playfair Display',serif;
+  font-size:1.6rem;font-weight:700;margin-bottom:8px;
+}
+.empty-sub{font-size:0.9rem;color:var(--muted);max-width:360px;margin:0 auto;line-height:1.6;}
+
+.loader-ring{
+  display:inline-block;width:36px;height:36px;
+  border:3px solid var(--border);border-top-color:var(--rust);
+  border-radius:50%;animation:spin 0.7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-state{text-align:center;padding:60px 20px;}
+
+/* ── Error ── */
+.err-box{
+  background:#fff0eb;border:2px solid var(--rust);
+  padding:14px 20px;color:var(--rust);
+  font-size:0.9rem;margin-bottom:24px;display:none;
+}
+.err-box.show{display:block;}
+
+/* ── Responsive ── */
+@media(max-width:720px){
+  .country-hero{grid-template-columns:1fr;}
+  .country-hero-img{min-height:220px;}
+  .stats-strip{grid-template-columns:1fr 1fr;}
+  .stat-block:nth-child(2){border-right:none;}
+  .photo-grid{grid-template-columns:1fr 1fr;}
+  .facts-grid{grid-template-columns:1fr;}
+  .logo{font-size:2.4rem;}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Masthead -->
+  <div class="masthead">
+    <div class="masthead-left">
+      <div class="issue-line">The World Edition · Travel Intelligence</div>
+      <div class="logo">Vo<span>ya</span></div>
+      <div class="tagline">Explore Every Corner of the Globe</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-family:'Playfair Display',serif;font-style:italic;font-size:0.95rem;color:var(--muted);">Powered by open data</div>
+      <div style="font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-top:4px;">RestCountries · OpenStreetMap · Wikimedia</div>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div class="search-section">
+    <div class="search-row">
+      <div class="autocomplete-wrap" style="flex:1;position:relative;">
+        <input class="search-field" id="searchInput" type="text" placeholder="Search a country or city…" autocomplete="off"/>
+        <div class="autocomplete-drop" id="autoDrop"></div>
+      </div>
+      <button class="search-btn" id="searchBtn">Explore →</button>
+    </div>
+    <div class="err-box" id="errBox"></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs" id="tabs" style="display:none;">
+    <div class="tab active" data-tab="overview">Overview</div>
+    <div class="tab" data-tab="photos">Photos</div>
+    <div class="tab" data-tab="nearby">Nearby</div>
+    <div class="tab" data-tab="map">Map</div>
+  </div>
+
+  <!-- Overview panel -->
+  <div class="panel active" id="panel-overview">
+    <div class="empty-state" id="welcomeState">
+      <div class="empty-icon">✈️</div>
+      <div class="empty-title">Where to next?</div>
+      <div class="empty-sub">Search for any country or city to unlock rich travel intel — facts, photos, nearby attractions, and an interactive map.</div>
+    </div>
+    <div class="loading-state" id="loadingState" style="display:none;">
+      <div class="loader-ring"></div>
+      <p style="margin-top:16px;color:var(--muted);font-size:0.85rem;letter-spacing:0.05em;">Gathering intelligence…</p>
+    </div>
+    <div id="overviewContent" style="display:none;"></div>
+  </div>
+
+  <!-- Photos panel -->
+  <div class="panel" id="panel-photos">
+    <div class="section-head">Photography</div>
+    <div id="photosContent"><div class="empty-state"><div class="empty-icon">📷</div><div class="empty-title">No photos yet</div><div class="empty-sub">Search a destination first.</div></div></div>
+  </div>
+
+  <!-- Nearby panel -->
+  <div class="panel" id="panel-nearby">
+    <div class="section-head">Points of Interest</div>
+    <div id="nearbyContent"><div class="empty-state"><div class="empty-icon">📍</div><div class="empty-title">No places yet</div><div class="empty-sub">Search a destination first.</div></div></div>
+  </div>
+
+  <!-- Map panel -->
+  <div class="panel" id="panel-map">
+    <div class="section-head">Interactive Map</div>
+    <div id="mapContent"><div class="empty-state"><div class="empty-icon">🗺️</div><div class="empty-title">No map yet</div><div class="empty-sub">Search a destination first.</div></div></div>
+  </div>
+
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox">
+  <span class="lightbox-close" id="lbClose">✕</span>
+  <img id="lbImg" src="" alt=""/>
+</div>
+
+<script>
+// ── State ──
+let currentLat=0, currentLon=0, currentName='', currentCountryCode='';
+
+// ── Tabs ──
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Lightbox ──
+document.getElementById('lbClose').addEventListener('click',()=>document.getElementById('lightbox').classList.remove('open'));
+document.getElementById('lightbox').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open');});
+
+function openLightbox(src){
+  document.getElementById('lbImg').src=src;
+  document.getElementById('lightbox').classList.add('open');
+}
+
+// ── Autocomplete ──
+let acTimer;
+const searchInput=document.getElementById('searchInput');
+const autoDrop=document.getElementById('autoDrop');
+
+searchInput.addEventListener('input',()=>{
+  clearTimeout(acTimer);
+  const q=searchInput.value.trim();
+  if(q.length<2){autoDrop.classList.remove('open');return;}
+  acTimer=setTimeout(()=>fetchAC(q),280);
+});
+searchInput.addEventListener('keydown',e=>{if(e.key==='Enter')doSearch();});
+document.getElementById('searchBtn').addEventListener('click',doSearch);
+document.addEventListener('click',e=>{if(!e.target.closest('.autocomplete-wrap'))autoDrop.classList.remove('open');});
+
+async function fetchAC(q){
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&addressdetails=1`,{headers:{'Accept-Language':'en'}});
+    const data=await r.json();
+    if(!data.length){autoDrop.classList.remove('open');return;}
+    autoDrop.innerHTML=data.map(p=>{
+      const name=p.display_name.split(',').slice(0,2).join(', ');
+      const type=p.type||p.class||'';
+      return `<div class="auto-item" data-lat="${p.lat}" data-lon="${p.lon}" data-name="${name}" data-cc="${p.address?.country_code||''}">
+        ${name}<div class="sub">${type} · ${p.address?.country||''}</div>
+      </div>`;
+    }).join('');
+    autoDrop.classList.add('open');
+    autoDrop.querySelectorAll('.auto-item').forEach(item=>{
+      item.addEventListener('click',()=>{
+        searchInput.value=item.dataset.name;
+        autoDrop.classList.remove('open');
+        load(parseFloat(item.dataset.lat),parseFloat(item.dataset.lon),item.dataset.name,item.dataset.cc);
+      });
+    });
+  }catch(e){}
+}
+
+async function doSearch(){
+  const q=searchInput.value.trim();
+  if(!q)return;
+  autoDrop.classList.remove('open');
+  setLoading(true);
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&addressdetails=1`,{headers:{'Accept-Language':'en'}});
+    const data=await r.json();
+    if(!data.length){showErr('Place not found. Try another name.');setLoading(false);return;}
+    const p=data[0];
+    const name=p.display_name.split(',').slice(0,2).join(', ');
+    load(parseFloat(p.lat),parseFloat(p.lon),name,p.address?.country_code||'');
+  }catch(e){showErr('Network error.');setLoading(false);}
+}
+
+// ── Main loader ──
+async function load(lat,lon,name,cc){
+  currentLat=lat; currentLon=lon; currentName=name; currentCountryCode=cc;
+  setLoading(true); clearErr();
+  document.getElementById('tabs').style.display='flex';
+
+  try{
+    const [countryData,photos,nearby]=await Promise.all([
+      fetchCountry(cc||name),
+      fetchPhotos(name),
+      fetchNearby(lat,lon)
+    ]);
+    renderOverview(countryData,name,lat,lon);
+    renderPhotos(photos,name);
+    renderNearby(nearby);
+    renderMap(lat,lon,name);
+  }catch(err){
+    showErr('Failed to load data for this location.');
+  }
+  setLoading(false);
+}
+
+// ── RestCountries ──
+async function fetchCountry(query){
+  // Try by country code first, then by name
+  try{
+    if(query && query.length===2){
+      const r=await fetch(`https://restcountries.com/v3.1/alpha/${query}`);
+      if(r.ok){const d=await r.json();return d[0];}
+    }
+    const r=await fetch(`https://restcountries.com/v3.1/name/${encodeURIComponent(query.split(',')[0])}?fullText=false`);
+    if(r.ok){const d=await r.json();return d[0];}
+  }catch(e){}
+  return null;
+}
+
+// ── Wikimedia photos ──
+async function fetchPhotos(name){
+  try{
+    const place=name.split(',')[0].trim();
+    const r=await fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(place)}&prop=images&imlimit=20&format=json&origin=*`);
+    const data=await r.json();
+    const pages=data.query?.pages||{};
+    const imgs=Object.values(pages)[0]?.images||[];
+    const filtered=imgs
+      .map(i=>i.title)
+      .filter(t=>!/flag|coat|logo|icon|emblem|map|locator|blank|wikivoyage|banner/i.test(t))
+      .filter(t=>/\.(jpg|jpeg|png)/i.test(t))
+      .slice(0,9);
+
+    // Fetch actual URLs
+    const urls=await Promise.all(filtered.map(async title=>{
+      try{
+        const r2=await fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=imageinfo&iiprop=url|extmetadata&format=json&origin=*`);
+        const d2=await r2.json();
+        const pg=Object.values(d2.query?.pages||{})[0];
+        const info=pg?.imageinfo?.[0];
+        return info?{url:info.url,caption:info.extmetadata?.ImageDescription?.value?.replace(/<[^>]*>/g,'')||title.replace('File:','')}:null;
+      }catch(e){return null;}
+    }));
+    return urls.filter(Boolean);
+  }catch(e){return[];}
+}
+
+// ── OSM Nearby POIs ──
+async function fetchNearby(lat,lon){
+  try{
+    const delta=0.5;
+    const bbox=`${lon-delta},${lat-delta},${lon+delta},${lat+delta}`;
+    const query=`[out:json][timeout:10];(node["tourism"~"attraction|museum|viewpoint|artwork"](${lat-delta},${lon-delta},${lat+delta},${lon+delta});node["historic"~"monument|castle|ruins|memorial"](${lat-delta},${lon-delta},${lat+delta},${lon+delta}););out 15;`;
+    const r=await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
+    const data=await r.json();
+    return (data.elements||[])
+      .filter(e=>e.tags?.name)
+      .slice(0,12)
+      .map(e=>({
+        name:e.tags.name,
+        type:(e.tags.tourism||e.tags.historic||'attraction').replace(/_/g,' '),
+        lat:e.lat,lon:e.lon,
+        dist:haversine(lat,lon,e.lat,e.lon)
+      }))
+      .sort((a,b)=>a.dist-b.dist);
+  }catch(e){return[];}
+}
+
+function haversine(lat1,lon1,lat2,lon2){
+  const R=6371,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+// ── Render Overview ──
+function renderOverview(country,name,lat,lon){
+  const el=document.getElementById('overviewContent');
+  let heroHTML='';
+
+  if(country){
+    const flag=country.flag||country.flags?.emoji||'🏳️';
+    const nativeName=country.name?.nativeName?Object.values(country.name.nativeName)[0]?.common:'';
+    const capital=(country.capital||[])[0]||'—';
+    const pop=country.population?country.population.toLocaleString():'—';
+    const area=country.area?country.area.toLocaleString()+' km²':'—';
+    const currency=country.currencies?Object.values(country.currencies).map(c=>c.name).join(', '):'—';
+    const langs=country.languages?Object.values(country.languages).slice(0,3).join(', '):'—';
+    const region=country.region||'';
+    const subregion=country.subregion||'';
+    const flagImg=country.flags?.png||country.flags?.svg||'';
+
+    heroHTML=`
+    <div class="country-hero">
+      <div class="country-hero-img">
+        ${flagImg?`<img src="${flagImg}" alt="${name} flag"/>`:
+          `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:6rem;">${flag}</div>`}
+        ${flagImg?`<div class="flag-badge">${flag}</div>`:''}
+      </div>
+      <div class="country-hero-info">
+        <div>
+          <div class="country-region-label">${region}${subregion?' · '+subregion:''}</div>
+          <div class="country-name">${country.name?.common||name.split(',')[0]}</div>
+          ${nativeName&&nativeName!==country.name?.common?`<div class="country-native">${nativeName}</div>`:''}
+          <div class="country-desc">
+            ${country.name?.common||name.split(',')[0]} is a country in ${subregion||region||'the world'}.
+            ${capital!=='—'?` The capital is <strong>${capital}</strong>.`:''}
+            ${langs!=='—'?` ${langs.split(',').length>1?'Languages spoken include':'Language spoken:'} ${langs}.`:''}
+          </div>
+        </div>
+        <div class="facts-grid">
+          <div class="fact"><div class="fact-label">Capital</div><div class="fact-val">${capital}</div></div>
+          <div class="fact"><div class="fact-label">Currency</div><div class="fact-val">${currency}</div></div>
+          <div class="fact"><div class="fact-label">Population</div><div class="fact-val">${pop}</div></div>
+          <div class="fact"><div class="fact-label">Area</div><div class="fact-val">${area}</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="stats-strip">
+      <div class="stat-block"><div class="stat-num">${country.timezones?.length||1}</div><div class="stat-lbl">Time Zones</div></div>
+      <div class="stat-block"><div class="stat-num">${(country.borders||[]).length}</div><div class="stat-lbl">Borders</div></div>
+      <div class="stat-block"><div class="stat-num">${Object.keys(country.languages||{}).length}</div><div class="stat-lbl">Languages</div></div>
+      <div class="stat-block"><div class="stat-num">${country.startOfWeek==='monday'?'Mon':'Sun'}</div><div class="stat-lbl">Week Start</div></div>
+    </div>`;
+  } else {
+    heroHTML=`
+    <div class="country-hero" style="grid-template-columns:1fr;">
+      <div class="country-hero-info" style="padding:40px;">
+        <div class="country-region-label">Location</div>
+        <div class="country-name">${name.split(',')[0]}</div>
+        <div class="country-desc">Coordinates: ${lat.toFixed(4)}°, ${lon.toFixed(4)}°</div>
+        <div class="facts-grid">
+          <div class="fact"><div class="fact-label">Latitude</div><div class="fact-val">${lat.toFixed(5)}</div></div>
+          <div class="fact"><div class="fact-label">Longitude</div><div class="fact-val">${lon.toFixed(5)}</div></div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  el.innerHTML=heroHTML;
+  el.style.display='block';
+  document.getElementById('welcomeState').style.display='none';
+}
+
+// ── Render Photos ──
+function renderPhotos(photos,name){
+  const el=document.getElementById('photosContent');
+  if(!photos.length){
+    el.innerHTML=`<div class="empty-state"><div class="empty-icon">📷</div><div class="empty-title">No photos found</div><div class="empty-sub">Wikimedia has limited photos for this location.</div></div>`;
+    return;
+  }
+  el.innerHTML=`<div class="photo-grid">`+photos.map(p=>`
+    <div class="photo-item" onclick="openLightbox('${p.url}')">
+      <img src="${p.url}" alt="${p.caption||name}" loading="lazy" onerror="this.parentElement.style.display='none'"/>
+      <div class="photo-caption">${(p.caption||'').slice(0,80)}</div>
+    </div>`).join('')+`</div>`;
+}
+
+// ── Render Nearby ──
+function renderNearby(places){
+  const el=document.getElementById('nearbyContent');
+  if(!places.length){
+    el.innerHTML=`<div class="empty-state"><div class="empty-icon">📍</div><div class="empty-title">No POIs found</div><div class="empty-sub">No tagged attractions found in the area. Try a city centre.</div></div>`;
+    return;
+  }
+  el.innerHTML=`<div class="places-list">`+places.map((p,i)=>`
+    <div class="place-row" onclick="window.open('https://www.openstreetmap.org/?mlat=${p.lat}&mlon=${p.lon}&zoom=16','_blank')">
+      <div class="place-num">${String(i+1).padStart(2,'0')}</div>
+      <div class="place-info">
+        <div class="place-name">${p.name}</div>
+        <div class="place-type">${p.type}</div>
+      </div>
+      <div class="place-dist">${p.dist<1?(p.dist*1000).toFixed(0)+' m':p.dist.toFixed(1)+' km'}</div>
+    </div>`).join('')+`</div>`;
+}
+
+// ── Render Map ──
+function renderMap(lat,lon,name){
+  const el=document.getElementById('mapContent');
+  const zoom=name.split(',').length>1?12:6;
+  el.innerHTML=`
+    <div class="section-head">Interactive Map</div>
+    <div class="map-wrap">
+      <iframe
+        src="https://www.openstreetmap.org/export/embed.html?bbox=${lon-1},${lat-0.7},${lon+1},${lat+0.7}&layer=mapnik&marker=${lat},${lon}"
+        allowfullscreen loading="lazy">
+      </iframe>
+    </div>
+    <p style="font-size:0.75rem;color:var(--muted);letter-spacing:0.05em;">
+      Map data © <a href="https://openstreetmap.org" target="_blank" style="color:var(--rust);">OpenStreetMap</a> contributors.
+      <a href="https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=12/${lat}/${lon}" target="_blank" style="color:var(--rust);">Open full map →</a>
+    </p>`;
+}
+
+// ── UI Helpers ──
+function setLoading(on){
+  document.getElementById('loadingState').style.display=on?'block':'none';
+  if(on){
+    document.getElementById('overviewContent').style.display='none';
+    document.getElementById('welcomeState').style.display='none';
+  }
+}
+function showErr(msg){const e=document.getElementById('errBox');e.textContent=msg;e.classList.add('show');}
+function clearErr(){document.getElementById('errBox').classList.remove('show');}
+</script>
+</body>
+</html>
